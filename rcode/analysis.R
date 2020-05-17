@@ -150,7 +150,7 @@ freq %>%
   group_by(album) %>%
   # top_n(10, freq) %>%
   arrange(-freq) %>%
-  mutate(word=factor(word, freq)) %>%
+  # mutate(word=factor(word, freq)) %>%
   ggplot(aes(word, freq, fill=album)) +
   geom_col(show.legend = FALSE) +
   # facet_wrap(~album, ncol=3, scales="free") +
@@ -206,6 +206,74 @@ albums_corplot(Kamikaze, Revival, freq)
 ##################################################################################
 ############## COMPARING WORD USAGE ##############################################
 ##################################################################################
+
+# 18. Here we wanna check which words are more likely to show up in which 
+#     albums. We use log odds ratio
+word_ratios<-tidy_lyrics %>%
+  count(word, album) %>%
+  group_by(word) %>%
+  filter(sum(n)>10) %>%
+  ungroup() %>%
+  spread(album, n, fill=0) %>%
+  mutate_if(is.numeric, list(~(. + 1)/(sum(.)+1))) %>%
+  mutate(logratio=log(`The Slim Shady LP`/Revival)) %>%
+  arrange(desc(logratio)) %>%
+  select(word, `The Slim Shady LP`, Revival, logratio)
+  
+word_ratios %>%
+  arrange(abs(logratio))
+
+# 19. Let's plot the top 15 in these
+word_ratios %>%
+  group_by(logratio<0) %>%
+  top_n(10, abs(logratio)) %>%
+  ungroup() %>%
+  mutate(word = reorder(word, logratio)) %>%
+  ggplot(aes(word, logratio, fill=logratio<0)) +
+  geom_col(show.legend = FALSE) +
+  coord_flip() + theme_bw() +
+  ylab("log odds ratio (The Slim Shady LP/Revival)") +
+  scale_fill_discrete(name="", labels=c("The Slim Shady LP", "Revival"))
+  
+# 20. Wrap this in a function
+get_log_odds<-function(dat, album1, album2){
+  album1<-enquo(album1)
+  album2<-enquo(album2)
+  
+  word_ratios<-dat %>%
+    count(word, album) %>%
+    group_by(word) %>%
+    filter(sum(n)>10) %>%
+    ungroup() %>%
+    spread(album, n, fill=0) %>%
+    mutate_if(is.numeric, list(~(. + 1)/(sum(.)+1))) %>%
+    mutate(logratio=log(!!album1/!!album2)) %>%
+    arrange(desc(logratio)) %>%
+    select(word, !!album1, !!album2, logratio)
+  
+  word_ratios
+}
+
+word_ratios<-get_log_odds(tidy_lyrics, `The Marshall Mathers LP`, `The Marshall Mathers LP2`)
+
+plot_log_odds<-function(word_ratios, album1, album2){
+  # album1<-enquo(album1)
+  # album2<-enquo(album2)
+  
+  word_ratios %>%
+    group_by(logratio<0) %>%
+    top_n(15, abs(logratio)) %>%
+    ungroup() %>%
+    mutate(word = reorder(word, logratio)) %>%
+    ggplot(aes(word, logratio, fill=logratio<0)) +
+    geom_col(show.legend = FALSE) +
+    coord_flip() + theme_bw() +
+    ylab(paste0("log odds ratio (", album1,"/", album2,")" )) +
+    scale_fill_discrete(name="", labels=c(album1, album2))
+}
+
+plot_log_odds(word_ratios, "The Marshall Mathers LP", "The Marshall Mathers LP2")
+
 
 ##################################################################################
 ############## CHANGES IN WORD USE OVER TIME #####################################

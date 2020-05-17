@@ -7,22 +7,24 @@ library(stringr)
 library(Rspotify)
 library(readr)
 library(forcats)
+library(purrr)
+library(broom)
 
 
 ##################################################################################
 ############## GET LYRICS ########################################################
 ##################################################################################
 
-#### specify authorization key ###################################################
+# #### specify authorization key ###################################################
 # keys<-spotifyOAuth(app_id="EvolutionOfHipHop",
 #                    client_id="fb596ca0990a475fa1203b3dec8370a9",
 #                    client_secret="a94a49dc86cf42e087dd68a30178fd5c")
-
+# 
 # we get the album list from  Spotify - genius API lacks this feature
 # id<-searchArtist("Eminem", keys)$id[1]
 # albums<-getAlbums(artist_id=id, token=keys)
 # albums<-unique(albums$name)
-# albums<-albums[c(1,2,3,5,6,8,11,12,14,16)]
+# albums<-albums[c(1,2,3,5,6,9,11,12,14,16)]
 
 
 # track_list<-NULL
@@ -235,7 +237,7 @@ word_ratios %>%
   ylab("log odds ratio (The Slim Shady LP/Revival)") +
   scale_fill_discrete(name="", labels=c("The Slim Shady LP", "Revival"))
   
-# 20. Wrap this in a function
+# 20. Wrap these in functions
 get_log_odds<-function(dat, album1, album2){
   album1<-enquo(album1)
   album2<-enquo(album2)
@@ -279,9 +281,81 @@ plot_log_odds(word_ratios, "The Marshall Mathers LP", "The Marshall Mathers LP2"
 ############## CHANGES IN WORD USE OVER TIME #####################################
 ##################################################################################
 
+# 21. This is actually pretty exciting. How has his word usage evolved over time
+# 22. First, we make a data frame with word count per album, and word count across 
+#     all albums. I converted albums to integers for the model to work
+# 22a IMPORTANT: makes sure to check that what I'm doing makes sense
+# 22b I think what makes sense is to makes the albums dates instead
+
+# do this with geniusr if possible
+album_year<-c("01-17-2020","08-31-2018","12-15-2017","11-5-2013","06-18-2010",
+             "05-15-2009","11-12-2004","05-26-2002","05-23-2000","02-23-1999")
+origin<-as.Date("01-01-1995", format="%m-%d-%y")
+album_year<-as.Date(album_year, format="%m-%d-%y", origin=origin)
+
+album_dates<-tibble(album=albums,album_year=album_year)
+
+words_by_album<-tidy_lyrics %>%
+  inner_join(album_dates, by=c("album")) %>%
+  count(album_year, album, word) %>%
+  rename(count=n) %>%
+  group_by(album) %>%
+  mutate(album_total=sum(count)) %>%
+  group_by(word) %>%
+  mutate(word_total=sum(count)) %>%
+  ungroup() %>%
+  # mutate(album=factor(album, albums),
+  #        album=as.numeric(album)) %>%
+  filter(word_total > 100) %>%
+  arrange(-album_total) 
+
+words_by_album
+# albums
+# 23. Each row corresponds to the total number of times a word is used within an album
+#     as well as total number it's used across all albums
+# 24. Used nest to create list columns with miniature data frames for each word. WHY??
+
+nested_albums<-words_by_album %>%
+  mutate(album_year=as.numeric(album_year)) %>%
+  nest(data=c(album_year, count, album_total, word_total))
+
+nested_albums
+
+# 25. Import purrr, to use the map functionality
+nested_models<-nested_albums %>%
+  mutate(models = map(data, ~glm(cbind(count, album_total)~album_year, ., 
+                                 family="binomial")))
+
+nested_models$models
+
+# 26. We get a model for each of the words in the nested_albums data frame
+#     We then use map() and broom() to extract the stastistically significant
+#     ones, and adjust for multiple comparisons. Import broom for this
+
+slopes<-nested_models %>%
+  mutate(models=map(models, tidy)) %>%
+  unnest(cols=c(models)) %>%
+  mutate(adjusted.p.value=p.adjust(p.value)) 
+
+top_slopes<-slopes %>%
+  filter(adjusted.p.value<0.05)
+
+top_slopes
+
+words_by_album %>%
+  inner_join(top_slopes, by=c("word")) %>%
+  ggplot(aes(album, count/album_total, color=word)) +
+  geom_line(size=1.3) +
+  labs(x=NULL, y="word frequency")+
+  theme_bw()
+
+  
 ##################################################################################
 ############## SENTIMENT ANALYSIS ################################################
 ##################################################################################
+
+
+
 
 ##################################################################################
 ############## TOPIC MODELING ####################################################

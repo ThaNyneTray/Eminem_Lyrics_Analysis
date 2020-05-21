@@ -52,6 +52,9 @@ library(broom)
 #   lyrics<-rbind(lyrics, album_lyric)
 # }
 
+# save the original lyric data
+# write.csv(lyrics, "./data/original_lyrics.csv", row.names=FALSE)
+
 ##################################################################################
 ############## DATA IMPORT & CLEANING ############################################
 ##################################################################################
@@ -62,19 +65,30 @@ library(broom)
 # 2. we also don't need that column anymore, and the song urls,
 #    or the artist name, so we remove it
 # 3. need line numbers for analysis later, so we add those, 
- 
-# lyrics<-lyrics %>%
-#   filter(section_artist=="Eminem") %>%
-#   rename(lyric=line, track_n=track_number) %>%
-#   group_by(song_name) %>%
-#   mutate(line=cumsum(song_name==song_name)) %>%
-#   select(lyric, line, album, track_n, song_name) 
+
+original_lyrics<-read.csv("./data/original_lyrics.csv")
+section_artists<-unique(original_lyrics$section_artist)
+
+View(section_artists)
+
+# str detect since some verses are rapped/sang together with other artists
+# The song AROSE has the wrong section artist names.
+# because the verses are labelled in parts of the song, and no
+# indication of artist name.
+lyrics<-original_lyrics %>%
+  filter(str_detect(section_artist, "Eminem")|
+         section_artist=="Arose"|
+         section_artist=="Castle Extended") %>%
+  rename(lyric=line, track_n=track_number) %>%
+  group_by(song_name) %>%
+  mutate(line=cumsum(song_name==song_name)) %>%
+  select(lyric, line, album, track_n, song_name)
 
 # save data to csv file for future access
 # write_csv(lyrics, path="./data/lyrics_by_lines.csv")
 # 
 # # load lyrics data
-lyrics<-read_csv(file="./data/lyrics_by_lines.csv")
+# lyrics<-read_csv(file="./data/lyrics_by_lines.csv")
 
 lyrics
 
@@ -85,12 +99,12 @@ lyrics
 
 # Explore contractions
 
-with_contractions<-lyrics %>%
-  unnest_tokens(word,lyric) %>%
-  filter(str_detect(word, ".*'.*"))
-
-with_contractions<-unique(with_contractions$word)
-View(with_contractions)
+# with_contractions<-lyrics %>%
+#   unnest_tokens(word,lyric) %>%
+#   filter(str_detect(word, ".*'.*"))
+# 
+# with_contractions<-unique(with_contractions$word)
+# View(with_contractions)
 # 
 # with_contractions<-with_contractions[which(str_detect(with_contractions, "'s")==FALSE)]
 # 
@@ -149,68 +163,83 @@ View(with_contractions)
 #
 # explore contractions at end of words
 
-end_contractions<-lyrics %>%
-  # unnest_tokens(word, lyric) %>%
-  filter(str_detect(lyric, "'\\s"))
+# end_contractions<-lyrics %>%
+#   # unnest_tokens(word, lyric) %>%
+#   filter(str_detect(lyric, "'\\s"))
+# 
+# end_contractions<-str_extract(end_contractions$lyric, "\\w+'\\s")
+# end_contractions<-unique(end_contractions)
+# View(end_contractions)
+# # by far the most common one is the contraction at the end of gerunds - in' instead of ing
+# # testing removing them
+# end_contractions<-str_replace_all(end_contractions, "in'\\s", "ing")
+# 
+# View(end_contractions)
+# 
+# # explore wanna, gonna, finna
+# nna_s<-lyrics %>%
+#   unnest_tokens(word, lyric) %>%
+#   filter(str_detect(word, "nna"))
+# 
+# nna_s<-unique(nna_s$word)
+# View(nna_s)
+# 
+# fix_contractions<-function(dat){
+#   # as in the article, this could be a possesive or is/has
+#   dat<-str_replace_all(dat, "'s", "")
+#   dat<-str_replace_all(dat, "'m", " am")
+#   # this one could be had or would, but I decide to replace with would
+#   # barring analysis of tense, which I don't intend to do, this probably has no effect
+#   dat<-str_replace_all(dat, "'d", " would")
+#   # special cases of the n't contraction - won't and can't
+#   dat<-str_replace_all(dat, "can't", "cannot")
+#   dat<-str_replace_all(dat, "won't", "will not")
+#   dat<-str_replace_all(dat, "don'tchu", "don't you")
+#   # ain't is a special case.
+#   dat<-str_replace_all(dat, "ain't", "aint")
+#   dat<-str_replace_all(dat, "n't", " not")
+#   dat<-str_replace_all(dat, "'re", " are")
+#   dat<-str_replace_all(dat, "'ve", " have")
+#   dat<-str_replace_all(dat, "'ll", " will")
+#   dat<-str_replace_all(dat, "y'all", "you all")
+#   dat<-str_replace_all(dat, "e'ry", "every")
+#   dat<-str_replace_all(dat, "'da", " would have")
+#   dat<-str_replace_all(dat, "a'ight", "all right")
+#   dat<-str_replace_all(dat, "prob'ly", "probably")
+#   dat<-str_replace_all(dat, "'em", "them")
+#   # gerund contractions
+#   dat<-str_replace_all(dat, "in'\\s", "ing")
+#   # finna, wanna, gonna
+#   dat<-str_replace_all(dat, "gonna", "going to")
+#   dat<-str_replace_all(dat, "finna", "going to")
+#   dat<-str_replace_all(dat, "wanna", "want to")
+#   dat
+# }
+# # 
+# lyrics$lyric<-tolower(lyrics$lyric)
+# lyrics$lyric<-fix_contractions(lyrics$lyric)
+# # lyrics
+# # save cleaned data to csv file for future access
+# write_csv(lyrics, path="./data/lyrics_by_lines.csv")
+# 
+# # load lyrics data
+lyrics<-read_csv(file="./data/lyrics_by_lines.csv")
 
-end_contractions<-str_extract(end_contractions$lyric, "\\w+'\\s")
-end_contractions<-unique(end_contractions)
-View(end_contractions)
-# by far the most common one is the contraction at the end of gerunds - in' instead of ing
-# testing removing them
-end_contractions<-str_replace_all(end_contractions, "in'\\s", "ing")
-
-View(end_contractions)
-
-# explore wanna, gonna, finna
-nna_s<-lyrics %>%
-  unnest_tokens(word, lyric) %>%
-  filter(str_detect(word, "nna"))
-
-nna_s<-unique(nna_s$word)
-View(nna_s)
-
-# there's only three of this kind, so we can hardcode
-nna_s<-
-
-
-
-
-fix_contractions<-function(dat){
-  # as in the article, this could be a possesive or is/has
-  dat<-str_replace_all(dat, "'s", "")
-  dat<-str_replace_all(dat, "'m", " am")
-  # this one could be had or would, but I decide to replace with would
-  # barring analysis of tense, which I don't intend to do, this probably has no effect 
-  dat<-str_replace_all(dat, "'d", " would")
-  # special cases of the n't contraction - won't and can't
-  dat<-str_replace_all(dat, "can't", "cannot")
-  dat<-str_replace_all(dat, "won't", "will not")
-  dat<-str_replace_all(dat, "don'tchu", "don't you")
-  # ain't is a special case. 
-  dat<-str_replace_all(dat, "ain't", "aint")
-  dat<-str_replace_all(dat, "n't", " not")
-  dat<-str_replace_all(dat, "'re", " are")
-  dat<-str_replace_all(dat, "'ve", " have")
-  dat<-str_replace_all(dat, "'ll", " will")
-  dat<-str_replace_all(dat, "y'all", "you all")
-  dat<-str_replace_all(dat, "e'ry", "every")
-  dat<-str_replace_all(dat, "'da", " would have")
-  dat<-str_replace_all(dat, "a'ight", "all right")
-  dat<-str_replace_all(dat, "prob'ly", "probably")
-  dat<-str_replace_all(dat, "'em", "them")
-  # gerund contractions
-  dat<-str_replace_all(dat, "in'\\s", "ing")
-  # finna, wanna, gonna
-  dat<-str_replace_all(dat, "gonna", "going to")
-  dat<-str_replace_all(dat, "finna", "going to")
-  dat<-str_replace_all(dat, "wanna", "want to")
-  dat
-}
-
-lyrics$lyric<-tolower(lyrics$lyric)
-lyrics$lyric<-fix_contractions(lyrics$lyric)
 lyrics
+
+##################################################################################
+############## DESCRIPTIVE STATS #################################################
+##################################################################################
+summary(lyrics)
+
+# some songs have a length of 1 line. This is strange - most proably skits
+line_count<-lyrics %>%
+  group_by(album, song_name) %>%
+  count() %>%
+  ungroup() %>%
+  arrange(n)
+
+line_count
 
 ##################################################################################
 ############## WORD FREQUENCIES ##################################################

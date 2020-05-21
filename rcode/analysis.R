@@ -78,6 +78,140 @@ lyrics<-read_csv(file="./data/lyrics_by_lines.csv")
 
 lyrics
 
+
+##################################################################################
+############## DATA CONDITIONING #################################################
+##################################################################################
+
+# Explore contractions
+
+with_contractions<-lyrics %>%
+  unnest_tokens(word,lyric) %>%
+  filter(str_detect(word, ".*'.*"))
+
+with_contractions<-unique(with_contractions$word)
+View(with_contractions)
+# 
+# with_contractions<-with_contractions[which(str_detect(with_contractions, "'s")==FALSE)]
+# 
+# # check which lyrics have ain't
+# ain_t<-lyrics %>%
+#   filter(str_detect(lyric, "ain't"))
+# ain_t  
+# 
+# ain_t$lyric <-str_replace_all(ain_t$lyric, "ain't", "aint")
+# 
+# # check lyrics with y'all
+# y_all<-lyrics %>%
+#   filter(str_detect(lyric, "y'all"))
+# y_all  
+# 
+# # check lyrics with 'all
+# any_all<-lyrics %>%
+#   filter(str_detect(lyric, "'all"))
+# any_all  
+# 
+# # check lyrics with e'ry
+# e_ry<-lyrics %>%
+#   filter(str_detect(lyric, "e'ry"))
+# e_ry  
+# 
+# # check lyrics with c'mere
+# c_mere<-lyrics %>%
+#   filter(str_detect(lyric, "c'mere"))
+# c_mere  
+# 
+# # check lyrics with don'tchu
+# don_tchu<-lyrics %>%
+#   filter(str_detect(lyric, "'tchu"))
+# don_tchu
+# 
+# # check lyrics with g'd
+# g_d<-lyrics %>%
+#   filter(str_detect(lyric, "g'd"))
+# g_d
+# 
+# # check lyrics with 'da
+# da<-lyrics %>%
+#   filter(str_detect(lyric, "'da"))
+# da
+# 
+# # check lyrics with a'ight
+# a_ight<-lyrics %>%
+#   filter(str_detect(lyric, "aight"))
+# a_ight
+# 
+# # check lyrics with 'em
+# em<-lyrics %>%
+#   filter(str_detect(lyric, "'em"))
+# em
+
+#
+# explore contractions at end of words
+
+end_contractions<-lyrics %>%
+  # unnest_tokens(word, lyric) %>%
+  filter(str_detect(lyric, "'\\s"))
+
+end_contractions<-str_extract(end_contractions$lyric, "\\w+'\\s")
+end_contractions<-unique(end_contractions)
+View(end_contractions)
+# by far the most common one is the contraction at the end of gerunds - in' instead of ing
+# testing removing them
+end_contractions<-str_replace_all(end_contractions, "in'\\s", "ing")
+
+View(end_contractions)
+
+# explore wanna, gonna, finna
+nna_s<-lyrics %>%
+  unnest_tokens(word, lyric) %>%
+  filter(str_detect(word, "nna"))
+
+nna_s<-unique(nna_s$word)
+View(nna_s)
+
+# there's only three of this kind, so we can hardcode
+nna_s<-
+
+
+
+
+fix_contractions<-function(dat){
+  # as in the article, this could be a possesive or is/has
+  dat<-str_replace_all(dat, "'s", "")
+  dat<-str_replace_all(dat, "'m", " am")
+  # this one could be had or would, but I decide to replace with would
+  # barring analysis of tense, which I don't intend to do, this probably has no effect 
+  dat<-str_replace_all(dat, "'d", " would")
+  # special cases of the n't contraction - won't and can't
+  dat<-str_replace_all(dat, "can't", "cannot")
+  dat<-str_replace_all(dat, "won't", "will not")
+  dat<-str_replace_all(dat, "don'tchu", "don't you")
+  # ain't is a special case. 
+  dat<-str_replace_all(dat, "ain't", "aint")
+  dat<-str_replace_all(dat, "n't", " not")
+  dat<-str_replace_all(dat, "'re", " are")
+  dat<-str_replace_all(dat, "'ve", " have")
+  dat<-str_replace_all(dat, "'ll", " will")
+  dat<-str_replace_all(dat, "y'all", "you all")
+  dat<-str_replace_all(dat, "e'ry", "every")
+  dat<-str_replace_all(dat, "'da", " would have")
+  dat<-str_replace_all(dat, "a'ight", "all right")
+  dat<-str_replace_all(dat, "prob'ly", "probably")
+  dat<-str_replace_all(dat, "'em", "them")
+  # gerund contractions
+  dat<-str_replace_all(dat, "in'\\s", "ing")
+  # finna, wanna, gonna
+  dat<-str_replace_all(dat, "gonna", "going to")
+  dat<-str_replace_all(dat, "finna", "going to")
+  dat<-str_replace_all(dat, "wanna", "want to")
+  dat
+}
+
+lyrics$lyric<-tolower(lyrics$lyric)
+lyrics$lyric<-fix_contractions(lyrics$lyric)
+lyrics
+
 ##################################################################################
 ############## WORD FREQUENCIES ##################################################
 ##################################################################################
@@ -360,3 +494,4 @@ words_by_album %>%
 ##################################################################################
 ############## TOPIC MODELING ####################################################
 ##################################################################################
+

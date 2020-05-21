@@ -241,6 +241,53 @@ line_count<-lyrics %>%
 
 line_count
 
+# remove the skits and check what's left
+line_count <- line_count %>%
+  filter(!str_detect(song_name, "Skit"),
+         !str_detect(song_name, "skit"))
+
+short_titles<-subset(line_count, n<15)$song_name
+
+# the first 5 are Eminem/other people talking. We get rid of those
+# Eminem's shortest verse, it seems, is 24
+
+lyrics<-lyrics%>%
+  filter(!str_detect(song_name, "Skit"),
+         !str_detect(song_name, "skit"),
+         !song_name %in% short_titles)
+
+line_count<-lyrics %>%
+  group_by(album, song_name) %>%
+  count() %>%
+  ungroup() %>%
+  arrange(n)
+
+summary(line_count)
+sd(line_count)
+
+# let's plot a histogram of line length
+ggplot(line_count, aes(x=n)) +
+  geom_histogram(fill="lightblue", color="black", bins=25)+
+  theme_bw() + 
+  ylab("frequency") + xlab("line count")
+
+# corresponding density kernel estimate
+ggplot(line_count, aes(x=n)) +
+  geom_histogram(aes(y=..density..), bins=25, 
+                 fill="lightblue", color="black")+
+  geom_density(fill="red", alpha=0.2)+
+  theme_bw() + 
+  ylab("frequency") + xlab("line count")
+
+# let's see what's up with per album line count
+ggplot(line_count, aes(x=album, y=n)) +
+  geom_violin(fill="lightblue", trim=FALSE,
+              alpha=0.5, show.legend=FALSE)+
+  geom_boxplot(width=0.25, fill="white")+
+  xlab("") + ylab("line count")+
+  theme_bw()
+  
+
 ##################################################################################
 ############## WORD FREQUENCIES ##################################################
 ##################################################################################

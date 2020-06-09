@@ -1,77 +1,13 @@
-library(dplyr)
-library(tidyr)
+library(tidyverse)
 library(tidytext)
-library(ggplot2)
 library(geniusr)
-library(stringr)
 library(Rspotify)
-library(readr)
-library(forcats)
-library(purrr)
 library(broom)
 library(wordcloud2)
 library(lubridate)
 
 
-##################################################################################
-############## GET LYRICS ########################################################
-##################################################################################
-
-# #### specify authorization key ###################################################
-# keys<-spotifyOAuth(app_id="EvolutionOfHipHop",
-#                    client_id="fb596ca0990a475fa1203b3dec8370a9",
-#                    client_secret="a94a49dc86cf42e087dd68a30178fd5c")
-# #
-# # we get the album list from  Spotify - genius API lacks this feature
-# id<-searchArtist("Eminem", keys)$id[1]
-# albums<-getAlbums(artist_id=id, token=keys)
-# albums<-unique(albums$name)
-# albums<-albums[c(1,2,3,5,6,8,11,12,14,16)]
-# 
-# # track_list<-NULL
-# # for (i in 1:length(albums)){
-# #   tracks<-get_album_tracklist_search("Eminem", albums[i])
-# #   tracks$album<-albums[i]
-# #   track_list<-rbind(track_list, tracks)
-# # }
-# # track_list
-# # 
-# # # 
-# # # # save the track_list data to a csv
-# # write.csv(track_list, file="./data/track_list_data.csv", row.names=F)
-# 
-# ## load the track_list data frame
-# track_list<-read.csv("./data/track_list_data.csv", stringsAsFactors=F)
-# 
-# 
-# # get lyrics for the entire tracklist, and combine them into a data frame
-# lyrics<-c()
-# for (i in 1:nrow(track_list)){
-#   album_lyric<-get_lyrics_url(track_list$song_lyrics_url[i]) %>%
-#     mutate(album=track_list$album[i],
-#            track_number=track_list$song_number[i])
-#   lyrics<-rbind(lyrics, album_lyric)
-# }
-# 
-# # add album years as well
-# album_year<-c("01-17-2020","08-31-2018","12-15-2017","11-5-2013","06-18-2010",
-#               "05-15-2009","11-12-2004","05-26-2002","05-23-2000","02-23-1999")
-# album_year<-mdy(album_year)
-# 
-# album_dates<-tibble(album=albums,album_year=album_year)
-# # 
-# # # add dates to the lyrics. THese are album dates. Useful later on
-# lyrics<-lyrics %>%
-#   inner_join(album_dates, by=c("album"))
-# # 
-# lyrics
-# # 
-# # # save the original lyric data
-# write_csv(lyrics, "./data/original_lyrics.csv")
-
 original_lyrics <- read_csv("./data/original_lyrics.csv")
-
-# I should be consistent in my read and writes
 
 ##################################################################################
 ############## DATA IMPORT & CLEANING ############################################
@@ -116,92 +52,6 @@ lyrics<-original_lyrics %>%
 ##################################################################################
 
 # Explore contractions
-
-# with_contractions<-lyrics %>%
-#   unnest_tokens(word,lyric) %>%
-#   filter(str_detect(word, ".*'.*"))
-# 
-# with_contractions<-unique(with_contractions$word)
-# View(with_contractions)
-# 
-# with_contractions<-with_contractions[which(str_detect(with_contractions, "'s")==FALSE)]
-# 
-# # check which lyrics have ain't
-# ain_t<-lyrics %>%
-#   filter(str_detect(lyric, "ain't"))
-# ain_t  
-# 
-# ain_t$lyric <-str_replace_all(ain_t$lyric, "ain't", "aint")
-# 
-# # check lyrics with y'all
-# y_all<-lyrics %>%
-#   filter(str_detect(lyric, "y'all"))
-# y_all  
-# 
-# # check lyrics with 'all
-# any_all<-lyrics %>%
-#   filter(str_detect(lyric, "'all"))
-# any_all  
-# 
-# # check lyrics with e'ry
-# e_ry<-lyrics %>%
-#   filter(str_detect(lyric, "e'ry"))
-# e_ry  
-# 
-# # check lyrics with c'mere
-# c_mere<-lyrics %>%
-#   filter(str_detect(lyric, "c'mere"))
-# c_mere  
-# 
-# # check lyrics with don'tchu
-# don_tchu<-lyrics %>%
-#   filter(str_detect(lyric, "'tchu"))
-# don_tchu
-# 
-# # check lyrics with g'd
-# g_d<-lyrics %>%
-#   filter(str_detect(lyric, "g'd"))
-# g_d
-# 
-# # check lyrics with 'da
-# da<-lyrics %>%
-#   filter(str_detect(lyric, "'da"))
-# da
-# 
-# # check lyrics with a'ight
-# a_ight<-lyrics %>%
-#   filter(str_detect(lyric, "aight"))
-# a_ight
-# 
-# # check lyrics with 'em
-# em<-lyrics %>%
-#   filter(str_detect(lyric, "'em"))
-# em
-
-#
-# explore contractions at end of words
-
-# end_contractions<-lyrics %>%
-#   # unnest_tokens(word, lyric) %>%
-#   filter(str_detect(lyric, "'\\s"))
-# 
-# end_contractions<-str_extract(end_contractions$lyric, "\\w+'\\s")
-# end_contractions<-unique(end_contractions)
-# View(end_contractions)
-# # by far the most common one is the contraction at the end of gerunds - in' instead of ing
-# # testing removing them
-# end_contractions<-str_replace_all(end_contractions, "in'\\s", "ing")
-# 
-# View(end_contractions)
-# 
-# # explore wanna, gonna, finna
-# nna_s<-lyrics %>%
-#   unnest_tokens(word, lyric) %>%
-#   filter(str_detect(word, "nna"))
-# 
-# nna_s<-unique(nna_s$word)
-# View(nna_s)
-# 
 fix_contractions<-function(dat){
   # as in the article, this could be a possesive or is/has
   dat<-str_replace_all(dat, "'s", "")
@@ -248,7 +98,12 @@ sum(str_detect(lyrics$lyric, "[^a-zA-Z0-9 ]")) # we goodie
 write_csv(lyrics, "./data/lyrics_by_lines.csv")
 
  
-# load lyrics data
+# load lyrics data 
+# This is data that's been cleaned to some extent. 
+#  - non-EMinem sections cleared out
+#  - contractions expanded
+#  - non-alphanumeric characters removed
+
 lyrics<-read_csv(file="./data/lyrics_by_lines.csv")
 
 lyrics
@@ -752,80 +607,6 @@ plot_log_odds<-function(word_ratios, album1, album2){
 }
 
 plot_log_odds(word_ratios, "The Marshall Mathers LP", "The Marshall Mathers LP2")
-
-
-##################################################################################
-############## CHANGES IN WORD USE OVER TIME #####################################
-##################################################################################
-
-# 21. This is actually pretty exciting. How has his word usage evolved over time
-# 22. First, we make a data frame with word count per album, and word count across 
-#     all albums. I converted albums to integers for the model to work
-# 22a IMPORTANT: makes sure to check that what I'm doing makes sense
-# 22b I think what makes sense is to makes the albums dates instead
-
-# do this with geniusr if possible
-album_year<-c("01-17-2020","08-31-2018","12-15-2017","11-5-2013","06-18-2010",
-             "05-15-2009","11-12-2004","05-26-2002","05-23-2000","02-23-1999")
-origin<-as.Date("01-01-1995", format="%m-%d-%y")
-album_year<-as.Date(album_year, format="%m-%d-%y", origin=origin)
-
-album_dates<-tibble(album=albums,album_year=album_year)
-
-words_by_album<-lyrics_filtered %>%
-  inner_join(album_dates, by=c("album")) %>%
-  count(album_year, album, word) %>%
-  rename(count=n) %>%
-  group_by(album) %>%
-  mutate(album_total=sum(count)) %>%
-  group_by(word) %>%
-  mutate(word_total=sum(count)) %>%
-  ungroup() %>%
-  # mutate(album=factor(album, albums),
-  #        album=as.numeric(album)) %>%
-  filter(word_total > 100) %>%
-  arrange(-album_total) 
-
-words_by_album
-# albums
-# 23. Each row corresponds to the total number of times a word is used within an album
-#     as well as total number it's used across all albums
-# 24. Used nest to create list columns with miniature data frames for each word. WHY??
-
-nested_albums<-words_by_album %>%
-  mutate(album_year=as.numeric(album_year)) %>%
-  nest(data=c(album_year, count, album_total, word_total))
-
-nested_albums
-
-# 25. Import purrr, to use the map functionality
-nested_models<-nested_albums %>%
-  mutate(models = map(data, ~glm(cbind(count, album_total)~album_year, ., 
-                                 family="binomial")))
-
-nested_models$models
-
-# 26. We get a model for each of the words in the nested_albums data frame
-#     We then use map() and broom() to extract the stastistically significant
-#     ones, and adjust for multiple comparisons. Import broom for this
-
-slopes<-nested_models %>%
-  mutate(models=map(models, tidy)) %>%
-  unnest(cols=c(models)) %>%
-  mutate(adjusted.p.value=p.adjust(p.value)) 
-
-top_slopes<-slopes %>%
-  filter(adjusted.p.value<0.05)
-
-top_slopes
-
-words_by_album %>%
-  inner_join(top_slopes, by=c("word")) %>%
-  ggplot(aes(album, count/album_total, color=word)) +
-  geom_line(size=1.3) +
-  labs(x=NULL, y="word frequency")+
-  theme_bw()
-
   
 ##################################################################################
 ############## SENTIMENT ANALYSIS ################################################
